@@ -1,13 +1,13 @@
 from setuptools import find_packages, setup
 
 setup(
-    name='netbox_location_map',
+    name='netbox_floorplan',
     version='0.1',
     description='',
     install_requires=[],
     packages=find_packages(),
     include_package_data=True,
     zip_safe=False,
-    author='Tony Nealon',
-    author_email='tony@worksystems.co.nz',
+    author='Wholesail Networks LLC',
+    author_email='nick.bogle@ziply.com',
 )
