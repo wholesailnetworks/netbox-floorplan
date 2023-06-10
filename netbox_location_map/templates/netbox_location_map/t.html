@@ -27,7 +27,10 @@ Location Map
 {% block content-wrapper %}
 <style>
     #drag_zone {
-        box-sizing: content-box;
+        width: 1000px;
+        height: 500px;
+
+        border: 1px solid black;
     }
 
     .drag {
@@ -40,11 +43,6 @@ Location Map
         border: 1px solid black;
         background: #aaa;
         z-index: 999;
-
-    }
-
-    #drag-container {
-        padding-right: 1rem
     }
 
     .draggable-two {
@@ -58,7 +56,7 @@ Location Map
     }
 
     canvas {
-        /**border: 1px solid #999;**/
+        border: 1px solid #999;
     }
 </style>
 <div class="tab-content">
@@ -67,40 +65,24 @@ Location Map
             <div class="col-md-12">
                 <div class="row">
                     <div class="col-md-3">
-                        <div class="row">
-                            <div class="card">
-                                <div class="card-body" id="object_list">
-                                    <div id="library" class="container library-container">
-                                        <div class="btn btn-sm btn-primary drag prevent-overlap" id="test"
-                                            onclick="add_node()">Rack 1</div>
-                                        <div class="btn btn-sm btn-primary drag prevent-overlap">Rack 2</div>
-                                        <div class="btn btn-sm btn-primary drag prevent-overlap">Rack 3</div>
-                                    </div>
+                        <div class="card">
+                            <div class="card-body" id="object_list">
+                                <div id="library" class="container library-container">
+                                    <div class="btn btn-sm btn-primary drag prevent-overlap">Rack 1</div>
+                                    <div class="btn btn-sm btn-primary drag prevent-overlap">Rack 2</div>
+                                    <div class="btn btn-sm btn-primary drag prevent-overlap">Rack 3</div>
                                 </div>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-9">
                         <div class="card">
-                            <div class="card-body" id="content-container">
+                            <div class="card-body" id="object_list">
                                 <div id="drag_zone">
                                     <canvas id="canvas" width="1000" height="500"></canvas>
                                 </div>
                             </div>
                         </div>
-                        <div class="card">
-                            <div class="card-body" id="tools-control">
-                                <div class="btn btn-sm btn-danger disabled tools" onclick="remove_node()"
-                                    id="remove_button">
-                                    Delete
-                                </div>
-                                <div class="btn btn-sm btn-secondary disabled tools" onclick="rotate_node()"
-                                    id="rotate_button">
-                                    Rotate
-                                </div>
-                            </div>
-                        </div>
-
                     </div>
                 </div>
             </div>
@@ -108,488 +90,102 @@ Location Map
     </div>
 </div>
 <script>
+    $(".drag").draggable({
+        obstacle: ".prevent-overlap",
+        containment: "#drag_zone",
+        collision: true,
+        distance: 10,
+        snap: true,
+        snapMode: "outer",
+        start: function (event, ui) {
+            $(this).removeClass('prevent-overlap');
+            // $(this).addClass('draggable');
+            // $(this).addClass('draggable-two');
+        },
+        stop: function (event, ui) {
+            $(this).addClass('prevent-overlap');
+            //alert(JSON.stringify(ui.position));
+        }
+    });
 
-    // $(".drag").draggable({
-    //     obstacle: ".prevent-overlap",
-    //     containment: "#drag_zone",
-    //     collision: true,
-    //     distance: 10,
-    //     snap: true,
-    //     snapMode: "outer",
-    //     start: function (event, ui) {
-    //         $(this).removeClass('prevent-overlap');
-    //         // $(this).addClass('draggable');
-    //         // $(this).addClass('draggable-two');
-    //     },
-    //     stop: function (event, ui) {
-    //         $(this).addClass('prevent-overlap');
-    //         //alert(JSON.stringify(ui.position));
-    //     }
-    // });
+    $(document).ready(function () {
+        $("#test").position({ top: 248, left: 471 });
+    });
 
-    // $(document).ready(function () {
-    //     $("#test").position({ top: 248, left: 471 });
-    // });
-
-    // var degrees = 0;
-    // $('.drag').click(function rotateMe(e) {
-    //     console.log("test");
-    //     degrees += 90;
-    //     $('.drag').css({
-    //         'transform': 'rotate(' + degrees + 'deg)',
-    //         '-ms-transform': 'rotate(' + degrees + 'deg)',
-    //         '-moz-transform': 'rotate(' + degrees + 'deg)',
-    //         '-webkit-transform': 'rotate(' + degrees + 'deg)',
-    //         '-o-transform': 'rotate(' + degrees + 'deg)'
-    //     });
-    // });
+    var degrees = 0;
+    $('.drag').click(function rotateMe(e) {
+        console.log("test");
+        degrees += 90;
+        $('.drag').css({
+            'transform': 'rotate(' + degrees + 'deg)',
+            '-ms-transform': 'rotate(' + degrees + 'deg)',
+            '-moz-transform': 'rotate(' + degrees + 'deg)',
+            '-webkit-transform': 'rotate(' + degrees + 'deg)',
+            '-o-transform': 'rotate(' + degrees + 'deg)'
+        });
+    });
 
 </script>
 <script>
 
-    // var control_line_pixel_length = null;
-
-    // var canvas = document.getElementById('canvas');
-    // var ctx = canvas.getContext("2d");
-    // canvas.addEventListener('mousedown', mouseDown, false);
-    // canvas.addEventListener('mousemove', mouseMove, false);
-    // canvas.addEventListener('mouseup', mouseUp, false);
-    // var mouseDown = false;
-    // var points = [];
-    // var lines = [];
-    // var linePoint = [];
-    // var stPoint;
-    // var endPoint;
-
-
-
-    // function draw_canvas_background(canvas_context) {
-    //     var imageObj = new Image();
-    //     imageObj.onload = function () {
-    //         ctx.drawImage(imageObj, 0, 0, canvas.width, canvas.height);
-    //     };
-    //     imageObj.src = '/static/netbox_logo.svg';
-    // };
-    // draw_canvas_background(ctx);
-
-    // let cvs = document.getElementById("canvas");
-    // cvs.width = document.querySelector("#content-container").getBoundingClientRect().width - 20;
-    // cvs.height = document.querySelector("#content-container").getBoundingClientRect().height;
-
-    // window.addEventListener("resize", () => {
-    //     cvs_width = document.querySelector("#content-container").getBoundingClientRect().width - 20;
-    //     cvs_height = document.querySelector("#content-container").getBoundingClientRect().height;
-
-    //     cvs.width = cvs_width;
-    //     cvs.height = cvs_height;
-    //     canvas_context = canvas.getContext("2d").clearRect(0, 0, cvs_width, cvs_height);
-
-    //     draw_canvas_background(canvas_context);
-    // });
-
-    // function Point(x, y) {
-    //     this.x = x;
-    //     this.y = y;
-    // }
-
-    // function lineP(stPoint, endPoint) {
-    //     this.stPoint = stPoint;
-    //     this.endPoint = endPoint;
-    // }
-
-    // function mouseDown(e) {
-    //     mouseDown = true;
-    //     linePoint = [];
-    //     stPoint = new Point(e.layerX, e.layerY); //get start point for line
-    // }
-
-    // function mouseMove(e) {
-    //     if (!mouseDown) return;
-    //     ctx.clearRect(0, 0, canvas.width, canvas.height); //clear canvas
-    //     //ctx.drawImage(imageObj, 0, 0, canvas.width, canvas.height); //redraw image
-    //     draw_canvas_background(ctx);
-    //     ctx.beginPath();
-    //     ctx.moveTo(stPoint.x, stPoint.y);
-    //     ctx.lineTo(e.layerX, e.layerY);
-    //     ctx.stroke();
-    //     ctx.lineWidth = 5;
-    //     ctx.strokeStyle = "#FF0000";
-    //     ctx.closePath();
-    //     let length = Math.sqrt((stPoint.x - e.layerX) ** 2 + (stPoint.y - e.layerY) ** 2);
-    //     control_line_pixel_length = length;
-    //     console.log(`Length of the line in pixels is: ${length}`);
-    // }
-
-    // function mouseUp(e) {
-    //     mouseDown = false;
-    //     endPoint = new Point(e.layerX, e.layerY); //get end point
-    //     linePoint.push(new lineP(stPoint, endPoint)); //store line points for next draw
-    //     console.log(linePoint);
-    // }
-
-    //(function (window) {
-
-    // holds all our boxes
-    var racks = [];
-
-    // New, holds the 8 tiny boxes that will be our selection handles
-    // the selection handles will be in this order:
-    // 0  1  2
-    // 3     4
-    // 5  6  7
-    var selectionHandles = [];
-
-    // Hold canvas information
-    var canvas;
-    var ctx;
-    var WIDTH;
-    var HEIGHT;
-    var INTERVAL = 20;  // how often, in milliseconds, we check to see if a redraw is needed
-
-    var isDrag = false;
-    var isResizeDrag = false;
-    var expectResize = -1; // New, will save the # of the selection handle if the mouse is over one.
-    var mx, my; // mouse coordinates
-
-    // when set to true, the canvas will redraw everything
-    // invalidate() just sets this to false right now
-    // we want to call invalidate() whenever we make a change
-    var canvasValid = false;
-
-    // The node (if any) being selected.
-    // If in the future we want to select multiple objects, this will get turned into an array
-    var mySel = null;
-
-    // The selection color and width. Right now we have a red selection with a small width
-    var mySelColor = '#FFFFFF';
-    var mySelWidth = 2;
-    var mySelBoxColor = 'darkred'; // New for selection boxes
-    var mySelBoxSize = 6;
-
-    // we use a fake canvas to draw individual shapes for selection testing
-    var ghostcanvas;
-    var gctx; // fake canvas context
-
-    // since we can drag from anywhere in a node
-    // instead of just its x/y corner, we need to save
-    // the offset of the mouse when we start dragging.
-    var offsetx, offsety;
-
-    // Padding and border style widths for mouse offsets
-    var stylePaddingLeft, stylePaddingTop, styleBorderLeft, styleBorderTop;
-
-
-    function disable_button_selection() {
-        if (!$(".tools").hasClass("disabled")) {
-            $(".tools").addClass("disabled");
-        }
-    }
-
-
-
-    // Box object to hold data
-    function Rack() {
-        this.x = 0;
-        this.y = 0;
-        this.w = 1; // default width and height?
-        this.h = 1;
-        this.fill = '#444444';
-        this.id = 0;
-        this.rotation = 0;
-        this.name = "Rack";
-    }
-
-    // New methods on the Box class
-    Rack.prototype = {
-
-        draw: function (context, optionalColor) {
-            if (context === gctx) {
-                context.fillStyle = 'black'; // always want black for the ghost canvas
-            } else {
-                context.fillStyle = this.fill;
-            }
-
-            // We can skip the drawing of elements that have moved off the screen:
-            if (this.x > WIDTH || this.y > HEIGHT) return;
-            if (this.x + this.w < 0 || this.y + this.h < 0) return;
-
-            // context.save();
-            // context.rotate(Math.PI / 2);
-
-            context.fillRect(this.x, this.y, this.w, this.h);
-            context.font = "20px Arial";
-            context.textAlign = "center";
-            context.fillStyle = "white";
-            context.textBaseline = "middle";
-            context.fillText(this.name, this.x + (this.w / 2), this.y + (this.h / 2));
-            // draw selection
-            // this is a stroke along the box and also 8 new selection handles
-            if (mySel === this) {
-                context.strokeStyle = mySelColor;
-                context.lineWidth = mySelWidth;
-                context.strokeRect(this.x, this.y, this.w, this.h);
-
-                // // draw the boxes
-
-                // var half = mySelBoxSize / 2;
-
-                // // 0  1  2
-                // // 3     4
-                // // 5  6  7
-
-                // // top left, middle, right
-                // selectionHandles[0].x = this.x - half;
-                // selectionHandles[0].y = this.y - half;
-
-                // selectionHandles[1].x = this.x + this.w / 2 - half;
-                // selectionHandles[1].y = this.y - half;
-
-                // selectionHandles[2].x = this.x + this.w - half;
-                // selectionHandles[2].y = this.y - half;
-
-                // //middle left
-                // selectionHandles[3].x = this.x - half;
-                // selectionHandles[3].y = this.y + this.h / 2 - half;
-
-                // //middle right
-                // selectionHandles[4].x = this.x + this.w - half;
-                // selectionHandles[4].y = this.y + this.h / 2 - half;
-
-                // //bottom left, middle, right
-                // selectionHandles[6].x = this.x + this.w / 2 - half;
-                // selectionHandles[6].y = this.y + this.h - half;
-
-                // selectionHandles[5].x = this.x - half;
-                // selectionHandles[5].y = this.y + this.h - half;
-
-                // selectionHandles[7].x = this.x + this.w - half;
-                // selectionHandles[7].y = this.y + this.h - half;
-
-
-                // context.fillStyle = mySelBoxColor;
-                // for (var i = 0; i < 8; i++) {
-                //     var cur = selectionHandles[i];
-                //     context.fillRect(cur.x, cur.y, mySelBoxSize, mySelBoxSize);
-                // }
-            }
-            console.log(`${this.x} ` + ` ${this.y}`);
-        } // end draw
-
-    }
-
-    //Initialize a new Box, add it, and invalidate the canvas
-    function addRect(x, y, w, h, fill, id, rotation, name) {
-        var rect = new Rack;
-        rect.x = x;
-        rect.y = y;
-        rect.w = w
-        rect.h = h;
-        rect.fill = fill;
-        this.id = id;
-        this.rotation = rotation;
-        this.name = name;
-        racks.push(rect);
-        invalidate();
-    }
-
-    // initialize our canvas, add a ghost canvas, set draw loop
-    // then add everything we want to intially exist on the canvas
-    function init_floor_plan() {
-        canvas = document.getElementById('canvas');
-        HEIGHT = canvas.height;
-        WIDTH = canvas.width;
-        ctx = canvas.getContext('2d');
-        ghostcanvas = document.createElement('canvas');
-        ghostcanvas.height = HEIGHT;
-        ghostcanvas.width = WIDTH;
-        gctx = ghostcanvas.getContext('2d');
-
-        //fixes a problem where double clicking causes text to get selected on the canvas
-        canvas.onselectstart = function () { return false; }
-
-        // fixes mouse co-ordinate problems when there's a border or padding
-        // see getMouse for more detail
-        if (document.defaultView && document.defaultView.getComputedStyle) {
-            stylePaddingLeft = parseInt(document.defaultView.getComputedStyle(canvas, null)['paddingLeft'], 10) || 0;
-            stylePaddingTop = parseInt(document.defaultView.getComputedStyle(canvas, null)['paddingTop'], 10) || 0;
-            styleBorderLeft = parseInt(document.defaultView.getComputedStyle(canvas, null)['borderLeftWidth'], 10) || 0;
-            styleBorderTop = parseInt(document.defaultView.getComputedStyle(canvas, null)['borderTopWidth'], 10) || 0;
-        }
-
-        // make mainDraw() fire every INTERVAL milliseconds
-        setInterval(mainDraw, INTERVAL);
-
-        // set our events. Up and down are for dragging,
-        // double click is for making new boxes
-        canvas.onmousedown = myDown;
-        canvas.onmouseup = myUp;
-        //canvas.ondblclick = myDblClick;
-        canvas.onmousemove = myMove;
-
-
-        // add a large green rectangle
-        addRect(260, 70, 60, 65, 'rgba(0,205,0,0.7)', 0, 0, "Rack 1");
-
-        // add a green-blue rectangle
-        addRect(240, 120, 40, 40, 'rgba(2,165,165,0.7)', 0, 0, "Rack 2");
-
-        // add a smaller purple rectangle
-        addRect(45, 60, 25, 25, 'rgba(150,150,250,0.7)', 0, 0, "Rack 3");
-    }
-
-
-    //wipes the canvas context
-    function clear(c) {
-        c.clearRect(0, 0, WIDTH, HEIGHT);
-    }
-
-    function mainDraw() {
-        if (canvasValid == false) {
-            clear(ctx);
-
-            // Add stuff you want drawn in the background all the time here
-
-            // draw all boxes
-            var l = racks.length;
-            for (var i = 0; i < l; i++) {
-                racks[i].draw(ctx); // we used to call drawshape, but now each box draws itself
-            }
-
-            // Add stuff you want drawn on top all the time here
-
-            canvasValid = true;
-        }
-    }
-
-    // Happens when the mouse is moving inside the canvas
-    function myMove(e) {
-        if (isDrag) {
-            getMouse(e);
-
-            mySel.x = mx - offsetx;
-            mySel.y = my - offsety;
-
-            invalidate();
-
-
-            invalidate();
-        }
-
-        getMouse(e);
-    }
-
-    // Happens when the mouse is clicked in the canvas
-    function myDown(e) {
-        console.log("myDown");
-        getMouse(e);
-
-        //we are over a selection box
-        if (expectResize !== -1) {
-            isResizeDrag = true;
-            return;
-        }
-
-        clear(gctx);
-        var l = racks.length;
-        for (var i = l - 1; i >= 0; i--) {
-            // draw shape onto ghost context
-            racks[i].draw(gctx, 'black');
-
-            // get image data at the mouse x,y pixel
-            var imageData = gctx.getImageData(mx, my, 1, 1);
-            var index = (mx + my * imageData.width) * 4;
-
-            // if the mouse pixel exists, select and break
-            if (imageData.data[3] > 0) {
-                mySel = racks[i];
-                console.log("test");
-                $(".tools").removeClass("disabled");
-                offsetx = mx - mySel.x;
-                offsety = my - mySel.y;
-                mySel.x = mx - offsetx;
-                mySel.y = my - offsety;
-                isDrag = true;
-
-                invalidate();
-                clear(gctx);
-                return;
-            }
-
-        }
-        // havent returned means we have selected nothing
-        mySel = null
-        disable_button_selection();
-        // clear the ghost canvas for next time
-        clear(gctx);
-        // invalidate because we might need the selection border to disappear
-        invalidate();
-    }
-
-    function myUp() {
-        isDrag = false;
-        isResizeDrag = false;
-        expectResize = -1;
-    }
-
-    // adds a new node
-    function add_node(e) {
-        //getMouse(e);
-        // for this method width and height determine the starting X and Y, too.
-        // so I left them as vars in case someone wanted to make them args for something and copy this code
-
-        let x = ctx.getTransform().e + 50;
-        let y = ctx.getTransform().f + 50;
-        console.log(`x: ${x}, y: ${y}`);
-
-        var width = 20;
-        var height = 20;
-        addRect(x - (width / 2), y - (height / 2), width, height, 'rgba(220,205,65,0.7)', 0, 0, "Rack 1");
-    }
-
-    function remove_node(node_idex) {
-        racks.splice(node_idex, 1);
-        invalidate();
-        disable_button_selection();
+    var control_line_pixel_length = null;
+
+    var canvas = document.getElementById('canvas');
+    var ctx = canvas.getContext("2d");
+    canvas.addEventListener('mousedown', mouseDown, false);
+    canvas.addEventListener('mousemove', mouseMove, false);
+    canvas.addEventListener('mouseup', mouseUp, false);
+    var mouseDown = false;
+    var points = [];
+    var lines = [];
+    var linePoint = [];
+    var stPoint;
+    var endPoint;
+
+    var imageObj = new Image();
+    imageObj.onload = function () {
+        ctx.drawImage(imageObj, 0, 0, canvas.width, canvas.height);
     };
+    imageObj.src = '/static/netbox_logo.svg';
 
-    function rotate_node() {
-        mySel.rotation += 90;
-        invalidate();
+    function Point(x, y) {
+        this.x = x;
+        this.y = y;
     }
 
-    function invalidate() {
-        canvasValid = false;
+    function lineP(stPoint, endPoint) {
+        this.stPoint = stPoint;
+        this.endPoint = endPoint;
     }
 
-    // Sets mx,my to the mouse position relative to the canvas
-    // unfortunately this can be tricky, we have to worry about padding and borders
-    function getMouse(e) {
-        var element = canvas, offsetX = 0, offsetY = 0;
-
-        if (element.offsetParent) {
-            do {
-                offsetX += element.offsetLeft;
-                offsetY += element.offsetTop;
-            } while ((element = element.offsetParent));
-        }
-
-        // Add padding and border style widths to offset
-        offsetX += stylePaddingLeft;
-        offsetY += stylePaddingTop;
-
-        offsetX += styleBorderLeft;
-        offsetY += styleBorderTop;
-
-        mx = e.pageX - offsetX;
-        my = e.pageY - offsetY
+    function mouseDown(e) {
+        mouseDown = true;
+        linePoint = [];
+        stPoint = new Point(e.layerX, e.layerY); //get start point for line
     }
 
-    $(document).ready(function () {
-        // Your code here
-        init_floor_plan();
-    });
+    function mouseMove(e) {
+        if (!mouseDown) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height); //clear canvas
+        ctx.drawImage(imageObj, 0, 0, canvas.width, canvas.height); //redraw image
+        ctx.beginPath();
+        ctx.moveTo(stPoint.x, stPoint.y);
+        ctx.lineTo(e.layerX, e.layerY);
+        ctx.stroke();
+        ctx.lineWidth = 5;
+        ctx.strokeStyle = "#FF0000";
+        ctx.closePath();
+        let length = Math.sqrt((stPoint.x - e.layerX) ** 2 + (stPoint.y - e.layerY) ** 2);
+        control_line_pixel_length = length;
+        console.log(`Length of the line in pixels is: ${length}`);
+    }
 
-
+    function mouseUp(e) {
+        mouseDown = false;
+        endPoint = new Point(e.layerX, e.layerY); //get end point
+        linePoint.push(new lineP(stPoint, endPoint)); //store line points for next draw
+        console.log(linePoint);
+    }
 
 
 </script>
