@@ -1,0 +1,192 @@
+{% extends 'base/layout.html' %}
+{% load static %}
+{% load form_helpers %}
+{% load helpers %}
+
+{% block head %}
+{{ block.super }}
+<script src="{% static 'netbox_location_map/jq.js' %}"></script>
+<script src="{% static 'netbox_location_map/jq-ui.js' %}"></script>
+{% endblock head %}
+
+{% block title %}
+Location Map
+{% endblock title %}
+
+{% block tabs %}
+<ul class="nav nav-tabs px-3">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="edit-tabs-tab" data-bs-toggle="tab" data-bs-target="#edit-tabs"
+            type="button" role="tab" aria-controls="edit-tabs" aria-selected="true">
+            Test
+        </button>
+    </li>
+</ul>
+{% endblock tabs %}
+
+{% block content-wrapper %}
+<style>
+    #drag_zone {
+        width: 1000px;
+        height: 500px;
+
+        border: 1px solid black;
+    }
+
+    .drag {
+        z-index: 999;
+    }
+
+    .draggable {
+        width: 50px;
+        height: 50px;
+        border: 1px solid black;
+        background: #aaa;
+        z-index: 999;
+    }
+
+    .draggable-two {
+        display: block;
+        float: right;
+        width: 150px;
+        height: 150px;
+        border: 1px solid black;
+        background: #aaa;
+        z-index: 999;
+    }
+
+    canvas {
+        border: 1px solid #999;
+    }
+</style>
+<div class="tab-content">
+    <div class="tab-pane show active" id="object-list" role="tabpanel" aria-labelledby="object-list-tab">
+        <div id="draggable-area">
+            <div class="col-md-12">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="card">
+                            <div class="card-body" id="object_list">
+                                <div id="library" class="container library-container">
+                                    <div class="btn btn-sm btn-primary drag prevent-overlap">Rack 1</div>
+                                    <div class="btn btn-sm btn-primary drag prevent-overlap">Rack 2</div>
+                                    <div class="btn btn-sm btn-primary drag prevent-overlap">Rack 3</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-9">
+                        <div class="card">
+                            <div class="card-body" id="object_list">
+                                <div id="drag_zone">
+                                    <canvas id="canvas" width="1000" height="500"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    $(".drag").draggable({
+        obstacle: ".prevent-overlap",
+        containment: "#drag_zone",
+        collision: true,
+        distance: 10,
+        snap: true,
+        snapMode: "outer",
+        start: function (event, ui) {
+            $(this).removeClass('prevent-overlap');
+            // $(this).addClass('draggable');
+            // $(this).addClass('draggable-two');
+        },
+        stop: function (event, ui) {
+            $(this).addClass('prevent-overlap');
+            //alert(JSON.stringify(ui.position));
+        }
+    });
+
+    $(document).ready(function () {
+        $("#test").position({ top: 248, left: 471 });
+    });
+
+    var degrees = 0;
+    $('.drag').click(function rotateMe(e) {
+        console.log("test");
+        degrees += 90;
+        $('.drag').css({
+            'transform': 'rotate(' + degrees + 'deg)',
+            '-ms-transform': 'rotate(' + degrees + 'deg)',
+            '-moz-transform': 'rotate(' + degrees + 'deg)',
+            '-webkit-transform': 'rotate(' + degrees + 'deg)',
+            '-o-transform': 'rotate(' + degrees + 'deg)'
+        });
+    });
+
+</script>
+<script>
+
+    var control_line_pixel_length = null;
+
+    var canvas = document.getElementById('canvas');
+    var ctx = canvas.getContext("2d");
+    canvas.addEventListener('mousedown', mouseDown, false);
+    canvas.addEventListener('mousemove', mouseMove, false);
+    canvas.addEventListener('mouseup', mouseUp, false);
+    var mouseDown = false;
+    var points = [];
+    var lines = [];
+    var linePoint = [];
+    var stPoint;
+    var endPoint;
+
+    var imageObj = new Image();
+    imageObj.onload = function () {
+        ctx.drawImage(imageObj, 0, 0, canvas.width, canvas.height);
+    };
+    imageObj.src = '/static/netbox_logo.svg';
+
+    function Point(x, y) {
+        this.x = x;
+        this.y = y;
+    }
+
+    function lineP(stPoint, endPoint) {
+        this.stPoint = stPoint;
+        this.endPoint = endPoint;
+    }
+
+    function mouseDown(e) {
+        mouseDown = true;
+        linePoint = [];
+        stPoint = new Point(e.layerX, e.layerY); //get start point for line
+    }
+
+    function mouseMove(e) {
+        if (!mouseDown) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height); //clear canvas
+        ctx.drawImage(imageObj, 0, 0, canvas.width, canvas.height); //redraw image
+        ctx.beginPath();
+        ctx.moveTo(stPoint.x, stPoint.y);
+        ctx.lineTo(e.layerX, e.layerY);
+        ctx.stroke();
+        ctx.lineWidth = 5;
+        ctx.strokeStyle = "#FF0000";
+        ctx.closePath();
+        let length = Math.sqrt((stPoint.x - e.layerX) ** 2 + (stPoint.y - e.layerY) ** 2);
+        control_line_pixel_length = length;
+        console.log(`Length of the line in pixels is: ${length}`);
+    }
+
+    function mouseUp(e) {
+        mouseDown = false;
+        endPoint = new Point(e.layerX, e.layerY); //get end point
+        linePoint.push(new lineP(stPoint, endPoint)); //store line points for next draw
+        console.log(linePoint);
+    }
+
+
+</script>
+{% endblock content-wrapper %}

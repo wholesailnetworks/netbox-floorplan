@@ -1,0 +1,9 @@
+.vscode/
+.vscode/settings.json
+*.pyc
+venv
+*.egg-info/
+build
+dist
+manual_deploy.sh
+notes
