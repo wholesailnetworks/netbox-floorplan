@@ -1,0 +1,642 @@
+{% extends 'base/layout.html' %}
+{% load static %}
+{% load form_helpers %}
+{% load helpers %}
+
+{% block head %}
+{{ block.super }}
+<!-- <script src="{% static 'netbox_floorplan/fabric.js' %}"></script> -->
+<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/1.5.0/fabric.js"></script> -->
+<script src="{% static 'netbox_floorplan/fabric.js' %}"></script>
+<script type="text/javascript" src="{% static 'netbox_floorplan/lodash.js' %}"></script>
+<script src="{% static 'netbox_floorplan/jq.js' %}"></script>
+<link href="https://cdn.datatables.net/v/bs5/dt-1.13.4/datatables.min.css" rel="stylesheet" />
+<script src="https://cdn.datatables.net/v/bs5/dt-1.13.4/datatables.min.js"></script>
+<!-- <script src="{% static 'netbox_floorplan/jq-ui.js' %}"></script> -->
+
+{% endblock head %}
+
+{% block title %}
+{{ site.name }} Floorplan
+{% endblock title %}
+
+{% block tabs %}
+<ul class="nav nav-tabs px-3">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="edit-tabs-tab" data-bs-toggle="tab" data-bs-target="#edit-tabs"
+            type="button" role="tab" aria-controls="edit-tabs" aria-selected="true">
+            Edit
+        </button>
+    </li>
+</ul>
+{% endblock tabs %}
+
+{% block content-wrapper %}
+<style>
+    #drag_zone {
+        box-sizing: content-box;
+    }
+
+    .drag {
+        z-index: 999;
+    }
+
+    .draggable {
+        width: 50px;
+        height: 50px;
+        border: 1px solid black;
+        background: #aaa;
+        z-index: 999;
+
+    }
+
+    #drag-container {
+        padding-right: 1rem
+    }
+
+    .draggable-two {
+        display: block;
+        float: right;
+        width: 150px;
+        height: 150px;
+        border: 1px solid black;
+        background: #aaa;
+        z-index: 999;
+    }
+
+    canvas {
+        /**border: 1px solid #999;**/
+    }
+</style>
+
+<div class="tab-content">
+    <div class="tab-pane show active" id="object-list" role="tabpanel" aria-labelledby="object-list-tab">
+        <div id="draggable-area">
+            <div class="col-md-12">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card">
+                            <h5 class="card-header">Rack List</h5>
+                            <div class="card-body">
+                                <script>        $(document).ready(function () {
+                                        $('#racklist').DataTable();
+                                    });
+                                </script>
+                                <table id="racklist" class="table table-hover attr-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Status</th>
+                                            <th>Tenant</th>
+                                            <th>Role</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for rack in racklist %}
+                                        {% if rack.id in existingracks %}
+                                        {% else %}
+                                        <tr id="{{ rack.id }}">
+                                            <td>{{ rack.name }}</td>
+                                            <td>{{ rack.status }}</td>
+                                            <td>{{ rack.tenant }}</td>
+                                            <td>{{ rack.role }}</td>
+                                            <td>
+                                                <div class="btn btn-sm btn-primary drag prevent-overlap" id=""
+                                                    onclick="map_floorplan_object(300, 500, 100, 200, '#ea8fe', 30, '{{ rack.id }}', '{{ rack.name }}'); document.getElementById('{{ rack.id  }}').remove()">
+                                                    Add</div>
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <div class="card">
+                            <div class="card-body" id="content-container">
+                                <div id="drag_zone">
+                                    <canvas id="canvas" width="800" height="500"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-body" id="tools-control">
+                                <div class="btn btn-sm btn-danger disabled tools" onclick="delete_floorplan_object()"
+                                    id="remove_button">
+                                    Delete
+                                </div>
+                                <div class="btn btn-sm btn-primary" onclick="save_floorplan()">
+                                    Save
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+
+    $('#control_unit_modal').on('hidden.bs.modal', () => {
+        canvas.getObjects().forEach(function (object) {
+            if (object.obj_type == "control_line") {
+                canvas.remove(object);
+            }
+        });
+        canvas.off('mouse:out mouse:over mouse:up mouse:down mouse:move', function (options) { });
+    });
+
+    var current_floor_plan_id = null;
+    var current_control_line_length_px = null;
+
+    var canvas = new fabric.Canvas('canvas'),
+        canvasWidth = document.getElementById('canvas').width,
+        canvasHeight = document.getElementById('canvas').height,
+        counter = 0,
+        snap = 20;
+
+    canvas.on('object:rotating', function (options) {
+        var step = 15;
+        options.target.angle = Math.round(options.target.angle / step) * step;
+    });
+
+    canvas.on({
+        "object:deselected": enable_button_selection,
+        "object:selected": enable_button_selection
+    });
+    function enable_button_selection() {
+        $(".tools").removeClass("disabled");
+    }
+
+    canvas.selection = false;
+
+    let checkbox = document.getElementById('set_scale');
+    checkbox.addEventListener('change', () => {
+        if (checkbox.checked) {
+            var line;
+            var is_down;
+            var arr = new Array();
+            var startx = new Array();
+            var endx = new Array();
+            var starty = new Array();
+            var endy = new Array();
+            var temp = 0;
+            var trigger = "1";
+            canvas.on('mouse:down', function (o) {
+                canvas.getObjects().forEach(function (object) {
+                    if (object.obj_type == "control_line") {
+                        canvas.remove(object);
+                    }
+                });
+                if (trigger == "1") {
+                    is_down = true;
+                    var pointer = canvas.getPointer(o.e);
+                    var points = [pointer.x, pointer.y, pointer.x, pointer.y];
+                    startx[temp] = pointer.x;
+                    starty[temp] = pointer.y;
+                    line = new fabric.Line(points, {
+                        strokeWidth: 2,
+                        stroke: 'red',
+                        originX: 'center',
+                        originY: 'center',
+                        obj_type: 'control_line'
+                    });
+                    canvas.add(line);
+                } else {
+                    canvas.forEachObject(function (o) {
+                        o.setCoords();
+                    });
+                }
+            });
+
+            canvas.on('mouse:move', function (o) {
+                if (!is_down) return;
+                var pointer = canvas.getPointer(o.e);
+                line.set({ x2: pointer.x, y2: pointer.y });
+
+                endx[temp] = pointer.x;
+                endy[temp] = pointer.y;
+
+                if (trigger == "1") {
+                    var px = Calculate.lineLength(startx[temp], starty[temp], endx[temp], endy[temp]).toFixed(2);
+                    current_control_line_length_px = px;
+                }
+                canvas.renderAll();
+            });
+
+
+            canvas.on('mouse:up', function (o) {
+                var pointer = canvas.getPointer(o.e);
+                is_down = false;
+                $('#control_unit_modal').modal('show');
+            });
+
+            canvas.on('mouse:over', function (e) {
+                e.target.setStroke('blue');
+                canvas.renderAll();
+            });
+
+            canvas.on('mouse:out', function (e) {
+                e.target.setStroke('red');
+                canvas.renderAll();
+            });
+
+            var Calculate = {
+                lineLength: function (x1, y1, x2, y2) {
+                    return Math.sqrt(Math.pow(x2 * 1 - x1 * 1, 2) + Math.pow(y2 * 1 - y1 * 1, 2));
+                }
+            };
+        } else {
+            console.log("off");
+            canvas.off('mouse:out mouse:over mouse:up mouse:down mouse:move', function (options) { });
+            init_map();
+        }
+    });
+
+    function adjust_scale() {
+        var scale_unit = document.getElementById("scale_unit").value;
+        var scale_value = document.getElementById("scale_value").value;
+        $.ajax({
+            type: "PATCH",
+            url: `/api/plugins/floorplan/floorplans/${current_floor_plan_id}/`,
+            dataType: "json",
+            headers: {
+                "X-CSRFToken": "{{ csrf_token }}",
+                "Content-Type": "application/json"
+            },
+            data: JSON.stringify({
+                "measurement_unit": scale_unit,
+                "scale": scale_value,
+            }),
+            error: function (err) {
+                console.log(`Error: ${err}`);
+            }
+        });
+        $('#control_unit_modal').modal('hide');
+    };
+
+
+    function map_floorplan_object(width, height, fill, rotation, id) {
+        var top = 300;
+        var left = 500;
+
+        var rect = new fabric.Rect({
+            top: top,
+            name: "rectangle",
+            left: left,
+            width: width,
+            height: height,
+            fill: fill,
+            opacity: 0.8,
+            lockRotation: false,
+            originX: "center",
+            originY: "center",
+            cornerSize: 15,
+            hasRotatingPoint: true,
+            perPixelTargetFind: true,
+            minScaleLimit: 1,
+            maxWidth: canvasWidth,
+            maxHeight: canvasHeight,
+        });
+
+        rect.custom = {};
+        rect.custom.counter = counter;
+
+        var text = new fabric.IText(rack, {
+            fontFamily: "Courier New",
+            fontSize: 16,
+            fill: "#FFFF",
+            textAlign: "center",
+            originX: "center",
+            originY: "center",
+            left: left,
+            top: top,
+            excludeFromExport: false,
+            includeDefaultValues: true,
+        });
+
+        var group = new fabric.Group([rect, text]);
+
+        group.setControlsVisibility({
+            mt: false,
+            mb: false,
+            ml: false,
+            mr: false,
+            bl: false,
+            br: false,
+            tl: false,
+            tr: false,
+        })
+
+        //group.setPosition(top, left);
+        group.setAngle(rotation);
+
+        if (id) {
+            group.set('id', id);
+        }
+
+        canvas.add(group);
+        counter++;
+    }
+
+    function delete_floorplan_object() {
+        var object = canvas.getActiveObject();
+        if (object) {
+            canvas.remove(object);
+        }
+        disable_button_selection();
+    };
+
+    function disable_button_selection() {
+        if (!$(".tools").hasClass("disabled")) {
+            $(".tools").addClass("disabled");
+        }
+    }
+
+    function set_new_position(dist_x, dist_y, target, obj) {
+        // See whether to focus on X or Y axis
+        if (Math.abs(dist_x) > Math.abs(dist_y)) {
+            if (dist_x > 0) {
+                target.setLeft(obj.getLeft() - target.getWidth());
+            } else {
+                target.setLeft(obj.getLeft() + obj.getWidth());
+            }
+        } else {
+            if (dist_y > 0) {
+                target.setTop(obj.getTop() - target.getHeight());
+            } else {
+                target.setTop(obj.getTop() + obj.getHeight());
+            }
+        }
+    }
+
+    function save_floorplan() {
+        var floor_json = canvas.toJSON(["id", "text", "_controlsVisibility"]);
+
+        console.log(JSON.stringify(floor_json));
+        $.ajax({
+            type: "PATCH",
+            url: `/api/plugins/floorplan/floorplans/${current_floor_plan_id}/`,
+            dataType: "json",
+            headers: {
+                "X-CSRFToken": "{{ csrf_token }}",
+                "Content-Type": "application/json"
+            },
+            data: JSON.stringify({
+                "canvas": floor_json,
+            }),
+            error: function (err) {
+                console.log(`Error: ${err}`);
+            }
+        });
+    }
+
+    canvas.on('object:moving', function (options) {
+        // Sets corner position coordinates based on current angle, width and height
+        options.target.setCoords();
+
+        // Don't allow objects off the canvas
+        if (options.target.getLeft() < snap) {
+            options.target.setLeft(0);
+        }
+
+        if (options.target.getTop() < snap) {
+            options.target.setTop(0);
+        }
+
+        if ((options.target.getWidth() + options.target.getLeft()) > (canvasWidth - snap)) {
+            options.target.setLeft(canvasWidth - options.target.getWidth());
+        }
+
+        if ((options.target.getHeight() + options.target.getTop()) > (canvasHeight - snap)) {
+            options.target.setTop(canvasHeight - options.target.getHeight());
+        }
+
+        // Loop through objects
+        canvas.forEachObject(function (obj) {
+            if (obj === options.target) return;
+
+            // If objects intersect
+            if (options.target.isContainedWithinObject(obj) || options.target.intersectsWithObject(obj) || obj.isContainedWithinObject(options.target)) {
+
+                var dist_x = ((obj.getLeft() + obj.getWidth()) / 2) - ((options.target.getLeft() + options.target.getWidth()) / 2);
+                var dist_y = ((obj.getTop() + obj.getHeight()) / 2) - ((options.target.getTop() + options.target.getHeight()) / 2);
+
+                set_new_position(dist_x, dist_y, options.target, obj);
+            }
+
+            // Snap objects to each other horizontally
+
+            // If bottom points are on same Y axis
+            if (Math.abs((options.target.getTop() + options.target.getHeight()) - (obj.getTop() + obj.getHeight())) < snap) {
+                // Snap target BL to object BR
+                if (Math.abs(options.target.getLeft() - (obj.getLeft() + obj.getWidth())) < snap) {
+                    options.target.setLeft(obj.getLeft() + obj.getWidth());
+                    options.target.setTop(obj.getTop() + obj.getHeight() - options.target.getHeight());
+                }
+
+                // Snap target BR to object BL
+                if (Math.abs((options.target.getLeft() + options.target.getWidth()) - obj.getLeft()) < snap) {
+                    options.target.setLeft(obj.getLeft() - options.target.getWidth());
+                    options.target.setTop(obj.getTop() + obj.getHeight() - options.target.getHeight());
+                }
+            }
+
+            // If top points are on same Y axis
+            if (Math.abs(options.target.getTop() - obj.getTop()) < snap) {
+                // Snap target TL to object TR
+                if (Math.abs(options.target.getLeft() - (obj.getLeft() + obj.getWidth())) < snap) {
+                    options.target.setLeft(obj.getLeft() + obj.getWidth());
+                    options.target.setTop(obj.getTop());
+                }
+
+                // Snap target TR to object TL
+                if (Math.abs((options.target.getLeft() + options.target.getWidth()) - obj.getLeft()) < snap) {
+                    options.target.setLeft(obj.getLeft() - options.target.getWidth());
+                    options.target.setTop(obj.getTop());
+                }
+            }
+
+            // Snap objects to each other vertically
+
+            // If right points are on same X axis
+            if (Math.abs((options.target.getLeft() + options.target.getWidth()) - (obj.getLeft() + obj.getWidth())) < snap) {
+                // Snap target TR to object BR
+                if (Math.abs(options.target.getTop() - (obj.getTop() + obj.getHeight())) < snap) {
+                    options.target.setLeft(obj.getLeft() + obj.getWidth() - options.target.getWidth());
+                    options.target.setTop(obj.getTop() + obj.getHeight());
+                }
+
+                // Snap target BR to object TR
+                if (Math.abs((options.target.getTop() + options.target.getHeight()) - obj.getTop()) < snap) {
+                    options.target.setLeft(obj.getLeft() + obj.getWidth() - options.target.getWidth());
+                    options.target.setTop(obj.getTop() - options.target.getHeight());
+                }
+            }
+
+            // If left points are on same X axis
+            if (Math.abs(options.target.getLeft() - obj.getLeft()) < snap) {
+                // Snap target TL to object BL
+                if (Math.abs(options.target.getTop() - (obj.getTop() + obj.getHeight())) < snap) {
+                    options.target.setLeft(obj.getLeft());
+                    options.target.setTop(obj.getTop() + obj.getHeight());
+                }
+
+                // Snap target BL to object TL
+                if (Math.abs((options.target.getTop() + options.target.getHeight()) - obj.getTop()) < snap) {
+                    options.target.setLeft(obj.getLeft());
+                    options.target.setTop(obj.getTop() - options.target.getHeight());
+                }
+            }
+        });
+
+        // var debounced_update_object_position = _.debounce(update_object_position, 1000);
+        // function update_object_position() {
+        //     var object = canvas.getActiveObject();
+        //     var fp_object_id = object.get("id");
+
+        //     $.ajax({
+        //         type: "PATCH",
+        //         url: `/api/plugins/floorplan/floorplan-objects/${fp_object_id}/`,
+        //         dataType: "json",
+        //         headers: {
+        //             "X-CSRFToken": "{{ csrf_token }}",
+        //             "Content-Type": "application/json"
+        //         },
+        //         data: JSON.stringify({
+        //             "x_coordinate": object.getTop(),
+        //             "y_coordinate": object.getLeft(),
+        //             "rotation": object.angle,
+        //         }),
+        //         error: function (err) {
+        //             console.log(`Error: ${err}`);
+        //         }
+        //     });
+
+        //     console.log(`id is ${fp_object_id}`);
+        //     console.log(object.getLeft());
+        //     console.log(object.getTop());
+        //     console.log(object.angle);
+        // }
+
+        // canvas.on({
+        //     "object:modified": debounced_update_object_position,
+        // });
+
+        options.target.setCoords();
+
+        var outer_area_left = null,
+            outer_area_top = null,
+            outer_area_right = null,
+            outer_area_bottom = null;
+
+        canvas.forEachObject(function (obj) {
+            if (obj === options.target) return;
+
+            if (options.target.isContainedWithinObject(obj) || options.target.intersectsWithObject(obj) || obj.isContainedWithinObject(options.target)) {
+
+                var intersect_left = null,
+                    intersect_top = null,
+                    intersect_width = null,
+                    intersect_height = null,
+                    intersect_size = null,
+                    target_left = options.target.getLeft(),
+                    target_right = target_left + options.target.getWidth(),
+                    target_top = options.target.getTop(),
+                    target_bottom = target_top + options.target.getHeight(),
+                    object_left = obj.getLeft(),
+                    object_right = object_left + obj.getWidth(),
+                    object_top = obj.getTop(),
+                    object_bottom = object_top + obj.getHeight();
+
+                // Find intersect information for X axis
+                if (target_left >= object_left && target_left <= object_right) {
+                    intersect_left = target_left;
+                    intersect_width = obj.getWidth() - (intersect_left - object_left);
+
+                } else if (object_left >= target_left && object_left <= target_right) {
+                    intersect_left = object_left;
+                    intersect_width = options.target.getWidth() - (intersect_left - target_left);
+                }
+
+                // Find intersect information for Y axis
+                if (target_top >= object_top && target_top <= object_bottom) {
+                    intersect_top = target_top;
+                    intersect_height = obj.getHeight() - (intersect_top - object_top);
+
+                } else if (object_top >= target_top && object_top <= target_bottom) {
+                    intersect_top = object_top;
+                    intersect_height = options.target.getHeight() - (intersect_top - target_top);
+                }
+
+                // Find intersect size (this will be 0 if objects are touching but not overlapping)
+                if (intersect_width > 0 && intersect_height > 0) {
+                    intersect_size = intersect_width * intersect_height;
+                }
+
+                // Set outer snapping area
+                if (obj.getLeft() < outer_area_left || outer_area_left == null) {
+                    outer_area_left = obj.getLeft();
+                }
+
+                if (obj.getTop() < outer_area_top || outer_area_top == null) {
+                    outer_area_top = obj.getTop();
+                }
+
+                if ((obj.getLeft() + obj.getWidth()) > outer_area_right || outer_area_right == null) {
+                    outer_area_right = obj.getLeft() + obj.getWidth();
+                }
+
+                if ((obj.getTop() + obj.getHeight()) > outer_area_bottom || outer_area_bottom == null) {
+                    outer_area_bottom = obj.getTop() + obj.getHeight();
+                }
+
+                // If objects are intersecting, reposition outside all shapes which touch
+                if (intersect_size) {
+                    var dist_x = (outer_area_right / 2) - ((options.target.getLeft() + options.target.getWidth()) / 2);
+                    var dist_y = (outer_area_bottom / 2) - ((options.target.getTop() + options.target.getHeight()) / 2);
+
+                    // Set new position
+                    set_new_position(dist_x, dist_y, options.target, obj);
+                }
+            }
+        });
+    });
+
+    function init_map() {
+        // get the obhject id from the url first (not done)
+        const floorplan_call = $.get("/api/plugins/floorplan/floorplans/");
+        floorplan_call.done(function (floorplan) {
+            floorplan.results.forEach((floorplan) => {
+                current_floor_plan_id = floorplan.id;
+                canvas.loadFromJSON(JSON.stringify(floorplan.canvas), canvas.renderAll.bind(canvas), function (o, object) {
+                    fabric.log(o, object);
+                });
+            });
+        }).fail(function (jq_xhr, text_status, error_thrown) {
+            console.log(`Error: ${error_thrown} - ${text_status}`);
+        });
+    };
+
+    $(document).ready(function () {
+        init_map();
+
+        // const floorplan_object_call = $.get("/api/plugins/floorplan/floorplan-objects/");
+        // floorplan_object_call.done(function (floorplan_object_json) {
+        //     floorplan_object_json.results.forEach((floorplan_object) => {
+
+        //         map_floorplan_object(floorplan_object.x_coordinate, floorplan_object.y_coordinate, 100, 200, "#6ea8fe", floorplan_object.rotation, floorplan_object.id)
+        //     });
+        // }).fail(function (jq_xhr, text_status, error_thrown) {
+        //     console.log(`Error: ${error_thrown} - ${text_status}`);
+        // });
+
+    });
+
+</script>
+
+{% endblock content-wrapper %}
