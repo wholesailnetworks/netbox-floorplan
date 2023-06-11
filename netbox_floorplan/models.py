@@ -40,7 +40,7 @@ class Floorplan(NetBoxModel):
     canvas = models.JSONField(default=dict)
 
     class Meta:
-        ordering = ('site', 'location', 'background_image', 'scale')
+        ordering = ('site', 'location', 'background_image', 'scale', 'measurement_unit')
 
     def get_absolute_url(self):
         return reverse('plugins:netbox_floorplan:floorplan', args=[self.pk])
