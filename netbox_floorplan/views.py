@@ -5,6 +5,9 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponse, HttpResponseNotFound
 from django.views import View
 from django.shortcuts import render
+from utilities.views import ViewTab, register_model_view
+from dcim.models import Site
+
 
 class TestView(LoginRequiredMixin, View):
 
@@ -13,9 +16,14 @@ class TestView(LoginRequiredMixin, View):
 
         return render(request, "netbox_floorplan/t.html")
     
-class FloorplanView(generic.ObjectView):
-    queryset = models.Floorplan.objects.all()
-
+@register_model_view(Site,name='floorplans',path='test')
+class FloorplanView(LoginRequiredMixin, View):
+    #queryset = models.Floorplan.objects.all()
+    tab = ViewTab(
+        label='Floor Plan',
+    )
+    def get(self, request,pk):
+        return render(request, "netbox_floorplan/t.html")
 class FloorplanListView(generic.ObjectListView):
     queryset = models.Floorplan.objects.all()
     table = tables.FloorplanTable
