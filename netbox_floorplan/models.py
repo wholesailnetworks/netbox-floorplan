@@ -36,7 +36,7 @@ class Floorplan(NetBoxModel):
         choices=measurement_choices,
         default='m'
     )
-
+    
     canvas = models.JSONField(default=dict)
 
     class Meta:
