@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import FloorplanObject
+from .models import FloorplanObject, Floorplan
 
 
 @admin.register(FloorplanObject)
@@ -12,4 +12,11 @@ class FloorplanObjectAdmin(admin.ModelAdmin):
         "x_coordinate",
         "y_coordinate",
         "rotation"
+    )
+
+
+@admin.register(Floorplan)
+class FloorplanAdmin(admin.ModelAdmin):
+    list_display = (
+        "pk",
     )

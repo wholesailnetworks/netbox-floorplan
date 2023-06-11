@@ -105,7 +105,6 @@ Location Map
                                 </div>
                             </div>
                         </div>
-
                     </div>
                 </div>
             </div>
@@ -332,38 +331,38 @@ Location Map
             }
         });
 
-        var debounced_update_object_position = _.debounce(update_object_position, 1000);
-        function update_object_position() {
-            var object = canvas.getActiveObject();
-            var fp_object_id = object.get("id");
+        // var debounced_update_object_position = _.debounce(update_object_position, 1000);
+        // function update_object_position() {
+        //     var object = canvas.getActiveObject();
+        //     var fp_object_id = object.get("id");
 
-            $.ajax({
-                type: "PATCH",
-                url: `/api/plugins/floorplan/floorplan-objects/${fp_object_id}/`,
-                dataType: "json",
-                headers: {
-                    "X-CSRFToken": "{{ csrf_token }}",
-                    "Content-Type": "application/json"
-                },
-                data: JSON.stringify({
-                    "x_coordinate": object.getTop(),
-                    "y_coordinate": object.getLeft(),
-                    "rotation": object.angle,
-                }),
-                error: function (err) {
-                    console.log(`Error: ${err}`);
-                }
-            });
+        //     $.ajax({
+        //         type: "PATCH",
+        //         url: `/api/plugins/floorplan/floorplan-objects/${fp_object_id}/`,
+        //         dataType: "json",
+        //         headers: {
+        //             "X-CSRFToken": "{{ csrf_token }}",
+        //             "Content-Type": "application/json"
+        //         },
+        //         data: JSON.stringify({
+        //             "x_coordinate": object.getTop(),
+        //             "y_coordinate": object.getLeft(),
+        //             "rotation": object.angle,
+        //         }),
+        //         error: function (err) {
+        //             console.log(`Error: ${err}`);
+        //         }
+        //     });
 
-            console.log(`id is ${fp_object_id}`);
-            console.log(object.getLeft());
-            console.log(object.getTop());
-            console.log(object.angle);
-        }
+        //     console.log(`id is ${fp_object_id}`);
+        //     console.log(object.getLeft());
+        //     console.log(object.getTop());
+        //     console.log(object.angle);
+        // }
 
-        canvas.on({
-            "object:modified": debounced_update_object_position,
-        });
+        // canvas.on({
+        //     "object:modified": debounced_update_object_position,
+        // });
 
         options.target.setCoords();
 
@@ -449,14 +448,25 @@ Location Map
 
     $(document).ready(function () {
 
-        const floorplan_call = $.get("/api/plugins/floorplan/floorplans/");
-        floorplan_call.done(function (floorplan) {
-            floorplan.results.forEach((floorplan) => {
-                console.log(JSON.stringify(floorplan));
-            });
-        }).fail(function (jq_xhr, text_status, error_thrown) {
-            console.log(`Error: ${error_thrown} - ${text_status}`);
+        dummy_obj = { "objects": [{ "type": "group", "originX": "left", "originY": "top", "left": 70, "top": 90, "width": 101, "height": 101, "fill": "rgb(0,0,0)", "stroke": null, "strokeWidth": 1, "strokeDashArray": null, "strokeLineCap": "butt", "strokeLineJoin": "miter", "strokeMiterLimit": 10, "scaleX": 1, "scaleY": 1, "angle": 0, "flipX": false, "flipY": false, "opacity": 1, "shadow": null, "visible": true, "clipTo": null, "backgroundColor": "", "fillRule": "nonzero", "globalCompositeOperation": "source-over", "id": 1, "objects": [{ "type": "rect", "originX": "center", "originY": "center", "left": 0, "top": 0, "width": 100, "height": 100, "fill": "#6ea8fe", "stroke": null, "strokeWidth": 1, "strokeDashArray": null, "strokeLineCap": "butt", "strokeLineJoin": "miter", "strokeMiterLimit": 10, "scaleX": 1, "scaleY": 1, "angle": 0, "flipX": false, "flipY": false, "opacity": 0.8, "shadow": null, "visible": true, "clipTo": null, "backgroundColor": "", "fillRule": "nonzero", "globalCompositeOperation": "source-over", "rx": 0, "ry": 0 }, { "type": "i-text", "originX": "center", "originY": "center", "left": 0, "top": 0, "width": 38.41, "height": 20.97, "fill": "#FFFF", "stroke": null, "strokeWidth": 1, "strokeDashArray": null, "strokeLineCap": "butt", "strokeLineJoin": "miter", "strokeMiterLimit": 10, "scaleX": 1, "scaleY": 1, "angle": 0, "flipX": false, "flipY": false, "opacity": 1, "shadow": null, "visible": true, "clipTo": null, "backgroundColor": "", "fillRule": "nonzero", "globalCompositeOperation": "source-over", "text": "test", "fontSize": 16, "fontWeight": "normal", "fontFamily": "Courier New", "fontStyle": "", "lineHeight": 1.16, "textDecoration": "", "textAlign": "center", "textBackgroundColor": "", "styles": {} }] }, { "type": "group", "originX": "left", "originY": "top", "left": 171, "top": 90, "width": 101, "height": 101, "fill": "rgb(0,0,0)", "stroke": null, "strokeWidth": 1, "strokeDashArray": null, "strokeLineCap": "butt", "strokeLineJoin": "miter", "strokeMiterLimit": 10, "scaleX": 1, "scaleY": 1, "angle": 0, "flipX": false, "flipY": false, "opacity": 1, "shadow": null, "visible": true, "clipTo": null, "backgroundColor": "", "fillRule": "nonzero", "globalCompositeOperation": "source-over", "id": "create", "objects": [{ "type": "rect", "originX": "center", "originY": "center", "left": 0, "top": 0, "width": 100, "height": 100, "fill": "#ea8fe", "stroke": null, "strokeWidth": 1, "strokeDashArray": null, "strokeLineCap": "butt", "strokeLineJoin": "miter", "strokeMiterLimit": 10, "scaleX": 1, "scaleY": 1, "angle": 0, "flipX": false, "flipY": false, "opacity": 0.8, "shadow": null, "visible": true, "clipTo": null, "backgroundColor": "", "fillRule": "nonzero", "globalCompositeOperation": "source-over", "rx": 0, "ry": 0 }, { "type": "i-text", "originX": "center", "originY": "center", "left": 0, "top": 0, "width": 38.41, "height": 20.97, "fill": "#FFFF", "stroke": null, "strokeWidth": 1, "strokeDashArray": null, "strokeLineCap": "butt", "strokeLineJoin": "miter", "strokeMiterLimit": 10, "scaleX": 1, "scaleY": 1, "angle": 0, "flipX": false, "flipY": false, "opacity": 1, "shadow": null, "visible": true, "clipTo": null, "backgroundColor": "", "fillRule": "nonzero", "globalCompositeOperation": "source-over", "text": "test", "fontSize": 16, "fontWeight": "normal", "fontFamily": "Courier New", "fontStyle": "", "lineHeight": 1.16, "textDecoration": "", "textAlign": "center", "textBackgroundColor": "", "styles": {} }] }], "background": "" };
+        dummy_json_string = JSON.stringify(dummy_obj);
+
+        // canvas.loadFromJSON(dummy_obj, function () {
+        //     canvas.renderAll();
+        // });
+
+        canvas.loadFromJSON(dummy_json_string, canvas.renderAll.bind(canvas), function (o, object) {
+            fabric.log(o, object);
         });
+
+        // const floorplan_call = $.get("/api/plugins/floorplan/floorplans/");
+        // floorplan_call.done(function (floorplan) {
+        //     floorplan.results.forEach((floorplan) => {
+        //         console.log(JSON.stringify(floorplan));
+        //     });
+        // }).fail(function (jq_xhr, text_status, error_thrown) {
+        //     console.log(`Error: ${error_thrown} - ${text_status}`);
+        // });
 
         const floorplan_object_call = $.get("/api/plugins/floorplan/floorplan-objects/");
         floorplan_object_call.done(function (floorplan_object_json) {

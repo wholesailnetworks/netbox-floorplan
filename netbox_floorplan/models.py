@@ -4,6 +4,7 @@ from django.urls import reverse
 from netbox.models import NetBoxModel
 from .utils import file_upload
 
+
 class Floorplan(NetBoxModel):
     site = models.ForeignKey(
         to='dcim.Site',
@@ -36,11 +37,14 @@ class Floorplan(NetBoxModel):
         default='m'
     )
 
+    canvas = models.JSONField(default=dict)
+
     class Meta:
         ordering = ('site', 'location', 'background_image', 'scale')
 
     def get_absolute_url(self):
         return reverse('plugins:netbox_floorplan:floorplan', args=[self.pk])
+
 
 class FloorplanObject(NetBoxModel):
     rack = models.ForeignKey(
@@ -72,7 +76,8 @@ class FloorplanObject(NetBoxModel):
     )
 
     class Meta:
-        ordering = ('floorplan', 'rack', 'location', 'x_coordinate', 'y_coordinate', 'rotation')
+        ordering = ('floorplan', 'rack', 'location',
+                    'x_coordinate', 'y_coordinate', 'rotation')
 
     def get_absolute_url(self):
         return reverse('plugins:netbox_floorplan:floorplanobject', args=[self.pk])
