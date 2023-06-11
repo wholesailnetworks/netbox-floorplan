@@ -77,7 +77,7 @@ Location Map
                                 <div class="card-body" id="object_list">
                                     <div id="library" class="container library-container">
                                         <div class="btn btn-sm btn-primary drag prevent-overlap" id="test"
-                                            onclick="map_floorplan_object(300, 500, 100, 200, '#ea8fe', 30, 'create')">
+                                            onclick="map_floorplan_object(100, 200, '#ea8fe', 30, '$create')">
                                             Rack 1</div>
                                         <div class="btn btn-sm btn-primary drag prevent-overlap">Rack 2</div>
                                         <div class="btn btn-sm btn-primary drag prevent-overlap">Rack 3</div>
@@ -96,12 +96,18 @@ Location Map
                         </div>
                         <div class="card">
                             <div class="card-body" id="tools-control">
-                                <div class="btn btn-sm btn-danger disabled tools" onclick="delete_floorplan_object()"
-                                    id="remove_button">
-                                    Delete
-                                </div>
-                                <div class="btn btn-sm btn-primary" onclick="save_floorplan()">
-                                    Save
+                                <div class="d-flex justify-content-space-between">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="set_scale">
+                                        <label class="form-check-label" for="set_scale">Set Scale</label>
+                                    </div>
+                                    <div class="btn btn-sm btn-danger disabled tools"
+                                        onclick="delete_floorplan_object()" id="remove_button">
+                                        Delete
+                                    </div>
+                                    <div class="btn btn-sm btn-primary" onclick="save_floorplan()">
+                                        Save
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -115,6 +121,7 @@ Location Map
 <script>
 
     var current_floor_plan_id = null;
+    var current_control_line_length_px = null;
 
     var canvas = new fabric.Canvas('canvas'),
         canvasWidth = document.getElementById('canvas').width,
@@ -137,15 +144,99 @@ Location Map
 
     canvas.selection = false;
 
+    // Detecting a Change to the Checkbox Status 
 
-    function map_floorplan_object(top, left, width, height, fill, rotation, id) {
+    let checkbox = document.getElementById('set_scale');
+    checkbox.addEventListener('change', () => {
+        if (checkbox.checked) {
+            var line, is_down;
+            var arr = new Array();
+            var startx = new Array();
+            var endx = new Array();
+            var starty = new Array();
+            var endy = new Array();
+            var temp = 0;
+            var trigger = "1";
+
+            canvas.on('mouse:down', function (o) {
+                canvas.clear(function (obj) { return (obj.type !== 'line'); });
+                if (trigger == "1") {
+                    is_down = true;
+                    var pointer = canvas.getPointer(o.e);
+
+                    var points = [pointer.x, pointer.y, pointer.x, pointer.y];
+                    startx[temp] = pointer.x;
+                    starty[temp] = pointer.y;
+                    line = new fabric.Line(points, {
+                        strokeWidth: 2,
+                        stroke: 'red',
+                        originX: 'center',
+                        originY: 'center'
+                    });
+                    canvas.add(line);
+                } else {
+                    canvas.forEachObject(function (o) {
+                        o.setCoords();
+                    });
+                }
+            });
+
+            canvas.on('mouse:move', function (o) {
+
+                if (!is_down) return;
+                var pointer = canvas.getPointer(o.e);
+                line.set({ x2: pointer.x, y2: pointer.y });
+
+                endx[temp] = pointer.x;
+                endy[temp] = pointer.y;
+
+                if (trigger == "1") {
+                    var px = Calculate.lineLength(startx[temp], starty[temp], endx[temp], endy[temp]).toFixed(2);
+                    current_control_line_length_px = px;
+                    console.log(`Length of the line in pixels is: ${px}`);
+                }
+                canvas.renderAll();
+            });
+
+
+            canvas.on('mouse:up', function (o) {
+                var pointer = canvas.getPointer(o.e);
+                is_down = false;
+
+            });
+
+            canvas.on('mouse:over', function (e) {
+                e.target.setStroke('blue');
+                canvas.renderAll();
+            });
+
+            canvas.on('mouse:out', function (e) {
+                e.target.setStroke('red');
+                canvas.renderAll();
+            });
+
+            var Calculate = {
+                lineLength: function (x1, y1, x2, y2) {
+                    return Math.sqrt(Math.pow(x2 * 1 - x1 * 1, 2) + Math.pow(y2 * 1 - y1 * 1, 2));
+                }
+            };
+        } else {
+            init_map();
+            canvas.off('mouse:out mouse:over mouse:up mouse:down', function (options) { });
+        }
+    });
+
+
+    function map_floorplan_object(width, height, fill, rotation, id) {
+        var top = 300;
+        var left = 500;
 
         var rect = new fabric.Rect({
             top: top,
             name: "rectangle",
             left: left,
-            width: 100,
-            height: 100,
+            width: width,
+            height: height,
             fill: fill,
             opacity: 0.8,
             lockRotation: false,
@@ -171,6 +262,8 @@ Location Map
             originY: "center",
             left: left,
             top: top,
+            excludeFromExport: false,
+            includeDefaultValues: true,
         });
 
 
@@ -231,8 +324,9 @@ Location Map
     }
 
     function save_floorplan() {
-        var floor_json = canvas.toJSON(["id"]);
-        //console.log(JSON.stringify(floor_json));
+        var floor_json = canvas.toJSON(["id", "text", "_controlsVisibility"]);
+
+        console.log(JSON.stringify(floor_json));
         $.ajax({
             type: "PATCH",
             url: `/api/plugins/floorplan/floorplans/${current_floor_plan_id}/`,
@@ -464,8 +558,8 @@ Location Map
         });
     });
 
-    $(document).ready(function () {
-
+    function init_map() {
+        // get the obhject id from the url first (not done)
         const floorplan_call = $.get("/api/plugins/floorplan/floorplans/");
         floorplan_call.done(function (floorplan) {
             floorplan.results.forEach((floorplan) => {
@@ -477,6 +571,10 @@ Location Map
         }).fail(function (jq_xhr, text_status, error_thrown) {
             console.log(`Error: ${error_thrown} - ${text_status}`);
         });
+    };
+
+    $(document).ready(function () {
+        init_map();
 
         // const floorplan_object_call = $.get("/api/plugins/floorplan/floorplan-objects/");
         // floorplan_object_call.done(function (floorplan_object_json) {
