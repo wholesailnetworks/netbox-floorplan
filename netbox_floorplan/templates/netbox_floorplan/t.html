@@ -77,7 +77,8 @@ Location Map
                                 <div class="card-body" id="object_list">
                                     <div id="library" class="container library-container">
                                         <div class="btn btn-sm btn-primary drag prevent-overlap" id="test"
-                                            onclick="map_floorplan_object(100, 200, '#ea8fe', 30, '$create')">
+                                            onclick="map_floorplan_object(100, 200, '#ea8fe', 30, '{{ rack.id }}', '{{ rack.name }}'); document.getElementById('{{ rack.id  }}').remove()"
+                                            )">
                                             Rack 1</div>
                                         <div class="btn btn-sm btn-primary drag prevent-overlap">Rack 2</div>
                                         <div class="btn btn-sm btn-primary drag prevent-overlap">Rack 3</div>
@@ -96,21 +97,53 @@ Location Map
                         </div>
                         <div class="card">
                             <div class="card-body" id="tools-control">
-                                <div class="d-flex justify-content-space-between">
+                                <div class="d-flex">
                                     <div class="form-check form-switch">
                                         <input class="form-check-input" type="checkbox" id="set_scale">
                                         <label class="form-check-label" for="set_scale">Set Scale</label>
                                     </div>
+                                    <div class="mx-2"></div>
                                     <div class="btn btn-sm btn-danger disabled tools"
                                         onclick="delete_floorplan_object()" id="remove_button">
                                         Delete
                                     </div>
+                                    <div class="mx-2"></div>
                                     <div class="btn btn-sm btn-primary" onclick="save_floorplan()">
                                         Save
                                     </div>
                                 </div>
                             </div>
                         </div>
+
+                        <div class="modal fade" id="control_unit_modal" tabindex="-1"
+                            aria-labelledby="control_unit_modal_label" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="control_unit_modal_label">Set Scale</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                            aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="d-flex">
+                                            <input id="scale_value" placeholder="unit" type="number" step="0.01" />
+                                            <div class="mx-2"></div>
+                                            <select id="scale_unit" class="netbox-static-select">
+                                                <option value="ft">Feet</option>
+                                                <option value="m">Meters</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary"
+                                            data-bs-dismiss="modal">Close</button>
+                                        <button type="button" class="btn btn-primary" onclick="adjust_scale()">Save
+                                            changes</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>
@@ -119,6 +152,15 @@ Location Map
 </div>
 
 <script>
+
+    $('#control_unit_modal').on('hidden.bs.modal', () => {
+        canvas.getObjects().forEach(function (object) {
+            if (object.obj_type == "control_line") {
+                canvas.remove(object);
+            }
+        });
+        canvas.off('mouse:out mouse:over mouse:up mouse:down mouse:move', function (options) { });
+    });
 
     var current_floor_plan_id = null;
     var current_control_line_length_px = null;
@@ -144,12 +186,11 @@ Location Map
 
     canvas.selection = false;
 
-    // Detecting a Change to the Checkbox Status 
-
     let checkbox = document.getElementById('set_scale');
     checkbox.addEventListener('change', () => {
         if (checkbox.checked) {
-            var line, is_down;
+            var line;
+            var is_down;
             var arr = new Array();
             var startx = new Array();
             var endx = new Array();
@@ -157,13 +198,15 @@ Location Map
             var endy = new Array();
             var temp = 0;
             var trigger = "1";
-
             canvas.on('mouse:down', function (o) {
-                canvas.clear(function (obj) { return (obj.type !== 'line'); });
+                canvas.getObjects().forEach(function (object) {
+                    if (object.obj_type == "control_line") {
+                        canvas.remove(object);
+                    }
+                });
                 if (trigger == "1") {
                     is_down = true;
                     var pointer = canvas.getPointer(o.e);
-
                     var points = [pointer.x, pointer.y, pointer.x, pointer.y];
                     startx[temp] = pointer.x;
                     starty[temp] = pointer.y;
@@ -171,7 +214,8 @@ Location Map
                         strokeWidth: 2,
                         stroke: 'red',
                         originX: 'center',
-                        originY: 'center'
+                        originY: 'center',
+                        obj_type: 'control_line'
                     });
                     canvas.add(line);
                 } else {
@@ -182,7 +226,6 @@ Location Map
             });
 
             canvas.on('mouse:move', function (o) {
-
                 if (!is_down) return;
                 var pointer = canvas.getPointer(o.e);
                 line.set({ x2: pointer.x, y2: pointer.y });
@@ -193,7 +236,6 @@ Location Map
                 if (trigger == "1") {
                     var px = Calculate.lineLength(startx[temp], starty[temp], endx[temp], endy[temp]).toFixed(2);
                     current_control_line_length_px = px;
-                    console.log(`Length of the line in pixels is: ${px}`);
                 }
                 canvas.renderAll();
             });
@@ -202,7 +244,7 @@ Location Map
             canvas.on('mouse:up', function (o) {
                 var pointer = canvas.getPointer(o.e);
                 is_down = false;
-
+                $('#control_unit_modal').modal('show');
             });
 
             canvas.on('mouse:over', function (e) {
@@ -221,10 +263,33 @@ Location Map
                 }
             };
         } else {
+            console.log("off");
+            canvas.off('mouse:out mouse:over mouse:up mouse:down mouse:move', function (options) { });
             init_map();
-            canvas.off('mouse:out mouse:over mouse:up mouse:down', function (options) { });
         }
     });
+
+    function adjust_scale() {
+        var scale_unit = document.getElementById("scale_unit").value;
+        var scale_value = document.getElementById("scale_value").value;
+        $.ajax({
+            type: "PATCH",
+            url: `/api/plugins/floorplan/floorplans/${current_floor_plan_id}/`,
+            dataType: "json",
+            headers: {
+                "X-CSRFToken": "{{ csrf_token }}",
+                "Content-Type": "application/json"
+            },
+            data: JSON.stringify({
+                "measurement_unit": scale_unit,
+                "scale": scale_value,
+            }),
+            error: function (err) {
+                console.log(`Error: ${err}`);
+            }
+        });
+        $('#control_unit_modal').modal('hide');
+    };
 
 
     function map_floorplan_object(width, height, fill, rotation, id) {
@@ -265,8 +330,6 @@ Location Map
             excludeFromExport: false,
             includeDefaultValues: true,
         });
-
-
 
         var group = new fabric.Group([rect, text]);
 
@@ -477,8 +540,6 @@ Location Map
         // });
 
         options.target.setCoords();
-
-        // If objects still overlap
 
         var outer_area_left = null,
             outer_area_top = null,
