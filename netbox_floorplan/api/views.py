@@ -13,6 +13,6 @@ class FloorplanViewSet(NetBoxModelViewSet):
 class FloorplanObjectViewSet(NetBoxModelViewSet):
     queryset = models.FloorplanObject.objects.all()
     serializer_class = FloorplanObjectSerializer
-    filterset_class = filtersets.FloorplanObjectFilterSet
+    # filterset_class = filtersets.FloorplanObjectFilterSet
     # search_fields = ['^name', 'slug']
     # bulk_update_fields = ['rack', 'location', 'floorplan', 'x_coordinate', 'y_coordinate']

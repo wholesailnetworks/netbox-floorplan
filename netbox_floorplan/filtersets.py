@@ -7,10 +7,3 @@ class FloorplanFilterSet(NetBoxModelFilterSet):
         fields = ['id', 'site', 'location']
     def search(self, queryset, name, value):
         return queryset.filter(description__icontains=value)
-
-class FloorplanObjectFilterSet(NetBoxModelFilterSet):
-    class Meta:
-        model = FloorplanObject
-        fields = ['id', 'rack', 'floorplan']
-    def search(self, queryset, name, value):
-        return queryset.filter(description__icontains=value)
