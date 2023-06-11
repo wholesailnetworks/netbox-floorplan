@@ -4,4 +4,4 @@ from .models import Floorplan, FloorplanObject
 class FloorplanForm(NetBoxModelForm):
         class Meta:
             model = Floorplan
-            fields = ['site', 'location', 'background_image', 'scale']
+            fields = ['site', 'location', 'background_image', 'scale', 'measurement_unit']
