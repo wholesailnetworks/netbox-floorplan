@@ -11,7 +11,7 @@ class FloorplanSerializer(NetBoxModelSerializer):
     class Meta:
         model = Floorplan
         fields = ['id', 'url', 'site', 'location', 'background_image',
-                  'scale', 'tags', 'custom_fields', 'created', 'last_updated']
+                  'scale', 'tags', 'custom_fields', 'created', 'last_updated', 'canvas']
 
 
 class FloorplanObjectSerializer(NetBoxModelSerializer):
