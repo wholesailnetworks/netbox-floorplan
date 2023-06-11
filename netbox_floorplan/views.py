@@ -50,4 +50,3 @@ class FloorplanMapEditView(LoginRequiredMixin, View):
         #     existingracks.append(object.id)
         form = forms.FloorplanRackFilterForm
         return render(request, "netbox_floorplan/floorplan_edit.html", {"form": form, "site": site, "racklist": racklist})
-
