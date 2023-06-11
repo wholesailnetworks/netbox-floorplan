@@ -132,25 +132,22 @@ Location Map
     }
 
     canvas.selection = false;
-    add_node();
-    add_node();
-    add_node();
+    add_node(118, 575);
+    add_node(118, 575);
+    add_node(118, 575);
 
     function add_node(top, left, width, height, fill) {
 
-        var box_height = 300;
-        var box_width = 100;
-
         var rect = new fabric.Rect({
-            top: 300,
+            top: top,
             name: "rectangle",
-            left: 0,
+            left: left,
             width: 100,
             height: 100,
             fill: 'rgba(' + (Math.floor(Math.random() * 256)) + ',' + (Math.floor(Math.random() * 256)) + ',' + (Math.floor(Math.random() * 256)) + ', 0.75)',
             lockRotation: false,
-            originX: 'left',
-            originY: 'top',
+            originX: "center",
+            originY: "center",
             cornerSize: 15,
             hasRotatingPoint: true,
             perPixelTargetFind: true,
@@ -169,8 +166,8 @@ Location Map
             textAlign: "center",
             originX: "center",
             originY: "center",
-            left: 0.5 * box_width,
-            top: box_height,
+            left: left,
+            top: top,
         });
 
 
@@ -188,6 +185,7 @@ Location Map
             tr: false,
         })
 
+        //group.setPosition(top, left);
         //rect.setAngle(25);
 
         canvas.add(group);
@@ -200,6 +198,11 @@ Location Map
             canvas.remove(object);
         }
         disable_button_selection();
+
+        // const x_pos = object.getLeft();
+        // const y_pos = object.getTop();
+        // console.log(x_pos, y_pos);
+
     };
 
     function disable_button_selection() {
