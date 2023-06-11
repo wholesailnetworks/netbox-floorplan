@@ -1,7 +1,4 @@
-{% extends 'base/layout.html' %}
-{% load static %}
-{% load form_helpers %}
-{% load helpers %}
+<script>
 
 {% block head %}
 {{ block.super }}
@@ -81,7 +78,7 @@
                                 <script>        $(document).ready(function () {
                                     $('#racklist').DataTable();
                                 });
-                                </script>
+                            </script>
                                 <table id="racklist" class="table table-hover attr-table">
                                     <thead>
                                         <tr>
@@ -103,7 +100,7 @@
                                             <td>{{ rack.role }}</td>
                                             <td>
                                                 <div class="btn btn-sm btn-primary drag prevent-overlap" id=""
-                                                onclick="map_floorplan_object(100, 200, '#ea8fe', 0, '{{ rack.id }}', '{{ rack.name }}'); document.getElementById('{{ rack.id  }}').remove()">Add</div>
+                                                onclick="map_floorplan_object(300, 500, 100, 200, '#ea8fe', 30, '{{ rack.id }}', '{{ rack.name }}'); document.getElementById('{{ rack.id  }}').remove()">Add</div>
                                             </td>
                                         </tr>
                                     {% endif %}
@@ -123,19 +120,12 @@
                         </div>
                         <div class="card">
                             <div class="card-body" id="tools-control">
-                                <div class="d-flex">
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" id="set_scale">
-                                        <label class="form-check-label" for="set_scale">Set Scale</label>
-                                    </div>
-                                    <div class="mx-2"></div>
-                                    <div class="btn btn-sm btn-danger disabled tools" onclick="delete_floorplan_object()" id="remove_button">
-                                        Delete
-                                    </div>
-                                    <div class="mx-2"></div>
-                                    <div class="btn btn-sm btn-primary" onclick="save_floorplan()">
-                                        Save
-                                    </div>
+                                <div class="btn btn-sm btn-danger disabled tools" onclick="delete_floorplan_object()"
+                                    id="remove_button">
+                                    Delete
+                                </div>
+                                <div class="btn btn-sm btn-primary" onclick="save_floorplan()">
+                                    Save
                                 </div>
                             </div>
                         </div>
@@ -145,42 +135,8 @@
         </div>
     </div>
 </div>
-<div class="modal fade" id="control_unit_modal" tabindex="-1" aria-labelledby="control_unit_modal_label"
-    aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="control_unit_modal_label">Set Scale</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="d-flex">
-                    <input id="scale_value" placeholder="unit" type="number" step="0.01" />
-                    <div class="mx-2"></div>
-                    <select id="scale_unit" class="netbox-static-select">
-                        <option value="ft">Feet</option>
-                        <option value="m">Meters</option>
-                    </select>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" onclick="adjust_scale()">Save
-                    changes</button>
-            </div>
-        </div>
-    </div>
-</div>
-<script>
 
-    $('#control_unit_modal').on('hidden.bs.modal', () => {
-        canvas.getObjects().forEach(function (object) {
-            if (object.obj_type == "control_line") {
-                canvas.remove(object);
-            }
-        });
-        canvas.off('mouse:out mouse:over mouse:up mouse:down mouse:move', function (options) { });
-    });
+<script>
 
     var current_floor_plan_id = null;
     var current_control_line_length_px = null;
@@ -245,76 +201,7 @@
                 }
             });
 
-            canvas.on('mouse:move', function (o) {
-                if (!is_down) return;
-                var pointer = canvas.getPointer(o.e);
-                line.set({ x2: pointer.x, y2: pointer.y });
-
-                endx[temp] = pointer.x;
-                endy[temp] = pointer.y;
-
-                if (trigger == "1") {
-                    var px = Calculate.lineLength(startx[temp], starty[temp], endx[temp], endy[temp]).toFixed(2);
-                    current_control_line_length_px = px;
-                }
-                canvas.renderAll();
-            });
-
-
-            canvas.on('mouse:up', function (o) {
-                var pointer = canvas.getPointer(o.e);
-                is_down = false;
-                $('#control_unit_modal').modal('show');
-            });
-
-            canvas.on('mouse:over', function (e) {
-                e.target.setStroke('blue');
-                canvas.renderAll();
-            });
-
-            canvas.on('mouse:out', function (e) {
-                e.target.setStroke('red');
-                canvas.renderAll();
-            });
-
-            var Calculate = {
-                lineLength: function (x1, y1, x2, y2) {
-                    return Math.sqrt(Math.pow(x2 * 1 - x1 * 1, 2) + Math.pow(y2 * 1 - y1 * 1, 2));
-                }
-            };
-        } else {
-            console.log("off");
-            canvas.off('mouse:out mouse:over mouse:up mouse:down mouse:move', function (options) { });
-            init_map();
-        }
-    });
-
-    function adjust_scale() {
-        var scale_unit = document.getElementById("scale_unit").value;
-        var scale_value = document.getElementById("scale_value").value;
-        $.ajax({
-            type: "PATCH",
-            url: `/api/plugins/floorplan/floorplans/${current_floor_plan_id}/`,
-            dataType: "json",
-            headers: {
-                "X-CSRFToken": "{{ csrf_token }}",
-                "Content-Type": "application/json"
-            },
-            data: JSON.stringify({
-                "measurement_unit": scale_unit,
-                "scale": scale_value,
-            }),
-            error: function (err) {
-                console.log(`Error: ${err}`);
-            }
-        });
-        $('#control_unit_modal').modal('hide');
-    };
-
-
-    function map_floorplan_object(width, height, fill, rotation, id, rack) {
-        var top =00;
-        var left = 500;
+    function map_floorplan_object(top, left, width, height, fill, rotation, id, rack) {
 
         var rect = new fabric.Rect({
             top: top,
