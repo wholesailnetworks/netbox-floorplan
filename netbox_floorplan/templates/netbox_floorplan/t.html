@@ -6,7 +6,9 @@
 {% block head %}
 {{ block.super }}
 <!-- <script src="{% static 'netbox_floorplan/fabric.js' %}"></script> -->
-<script src="	https://cdnjs.cloudflare.com/ajax/libs/fabric.js/1.5.0/fabric.js"></script>
+<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/1.5.0/fabric.js"></script> -->
+<script src="{% static 'netbox_floorplan/fabric.js' %}"></script>
+<script type="text/javascript" src="{% static 'netbox_floorplan/lodash.js' %}"></script>
 <script src="{% static 'netbox_floorplan/jq.js' %}"></script>
 <!-- <script src="{% static 'netbox_floorplan/jq-ui.js' %}"></script> -->
 
@@ -75,7 +77,8 @@ Location Map
                                 <div class="card-body" id="object_list">
                                     <div id="library" class="container library-container">
                                         <div class="btn btn-sm btn-primary drag prevent-overlap" id="test"
-                                            onclick="add_node(300, 500, 100, 200, '#ea8fe', 30, 'create')">Rack 1</div>
+                                            onclick="map_floorplan_object(300, 500, 100, 200, '#ea8fe', 30, 'create')">
+                                            Rack 1</div>
                                         <div class="btn btn-sm btn-primary drag prevent-overlap">Rack 2</div>
                                         <div class="btn btn-sm btn-primary drag prevent-overlap">Rack 3</div>
                                     </div>
@@ -93,13 +96,12 @@ Location Map
                         </div>
                         <div class="card">
                             <div class="card-body" id="tools-control">
-                                <div class="btn btn-sm btn-danger disabled tools" onclick="remove_node()"
+                                <div class="btn btn-sm btn-danger disabled tools" onclick="delete_floorplan_object()"
                                     id="remove_button">
                                     Delete
                                 </div>
-                                <div class="btn btn-sm btn-secondary disabled tools" onclick="rotate_node()"
-                                    id="rotate_button">
-                                    Rotate
+                                <div class="btn btn-sm btn-primary" onclick="save_floorplan()">
+                                    Save
                                 </div>
                             </div>
                         </div>
@@ -134,7 +136,7 @@ Location Map
     canvas.selection = false;
 
 
-    function add_node(top, left, width, height, fill, rotation, id) {
+    function map_floorplan_object(top, left, width, height, fill, rotation, id) {
 
         var rect = new fabric.Rect({
             top: top,
@@ -195,7 +197,7 @@ Location Map
         counter++;
     }
 
-    function remove_node() {
+    function delete_floorplan_object() {
         var object = canvas.getActiveObject();
         if (object) {
             canvas.remove(object);
@@ -224,6 +226,11 @@ Location Map
                 target.setTop(obj.getTop() + obj.getHeight());
             }
         }
+    }
+
+    function save_floorplan() {
+        var floor_json = canvas.toJSON(["id"]);
+        console.log(JSON.stringify(floor_json));
     }
 
     canvas.on('object:moving', function (options) {
@@ -325,25 +332,38 @@ Location Map
             }
         });
 
-        canvas.on({
-            "object:moving": debounced_update_object_position,
-            "object:rotating": debounced_update_object_position
-        });
-
-        var timer;
-        function debounced_update_object_position() {
-            clearTimeout(timer);
-            timer = setTimeout(update_object_position, 1000);
-        };
-
+        var debounced_update_object_position = _.debounce(update_object_position, 1000);
         function update_object_position() {
             var object = canvas.getActiveObject();
             var fp_object_id = object.get("id");
+
+            $.ajax({
+                type: "PATCH",
+                url: `/api/plugins/floorplan/floorplan-objects/${fp_object_id}/`,
+                dataType: "json",
+                headers: {
+                    "X-CSRFToken": "{{ csrf_token }}",
+                    "Content-Type": "application/json"
+                },
+                data: JSON.stringify({
+                    "x_coordinate": object.getTop(),
+                    "y_coordinate": object.getLeft(),
+                    "rotation": object.angle,
+                }),
+                error: function (err) {
+                    console.log(`Error: ${err}`);
+                }
+            });
+
             console.log(`id is ${fp_object_id}`);
             console.log(object.getLeft());
             console.log(object.getTop());
             console.log(object.angle);
         }
+
+        canvas.on({
+            "object:modified": debounced_update_object_position,
+        });
 
         options.target.setCoords();
 
@@ -429,19 +449,19 @@ Location Map
 
     $(document).ready(function () {
 
-        const floor_plan_call = $.get("/api/plugins/floorplan/floorplans/");
-        floor_plan_call.done(function (floor_plan) {
-            floor_plan.results.forEach((floor_plan) => {
-                console.log(JSON.stringify(floor_plan));
+        const floorplan_call = $.get("/api/plugins/floorplan/floorplans/");
+        floorplan_call.done(function (floorplan) {
+            floorplan.results.forEach((floorplan) => {
+                console.log(JSON.stringify(floorplan));
             });
         }).fail(function (jq_xhr, text_status, error_thrown) {
             console.log(`Error: ${error_thrown} - ${text_status}`);
         });
 
-        const floor_plan_object_call = $.get("/api/plugins/floorplan/floorplan-objects/");
-        floor_plan_object_call.done(function (floor_plan_object_json) {
-            floor_plan_object_json.results.forEach((floor_plan_object) => {
-                add_node(floor_plan_object.x_coordinate, floor_plan_object.y_coordinate, 100, 200, "#6ea8fe", floor_plan_object.rotation, floor_plan_object.id)
+        const floorplan_object_call = $.get("/api/plugins/floorplan/floorplan-objects/");
+        floorplan_object_call.done(function (floorplan_object_json) {
+            floorplan_object_json.results.forEach((floorplan_object) => {
+                map_floorplan_object(floorplan_object.x_coordinate, floorplan_object.y_coordinate, 100, 200, "#6ea8fe", floorplan_object.rotation, floorplan_object.id)
             });
         }).fail(function (jq_xhr, text_status, error_thrown) {
             console.log(`Error: ${error_thrown} - ${text_status}`);
@@ -737,7 +757,7 @@ Location Map
 
     // initialize our canvas, add a ghost canvas, set draw loop
     // then add everything we want to intially exist on the canvas
-    function init_floor_plan() {
+    function init_floorplan() {
         canvas = document.getElementById('canvas');
         HEIGHT = canvas.height;
         WIDTH = canvas.width;
@@ -875,7 +895,7 @@ Location Map
     }
 
     // adds a new node
-    function add_node(e) {
+    function map_floorplan_object(e) {
         //getMouse(e);
         // for this method width and height determine the starting X and Y, too.
         // so I left them as vars in case someone wanted to make them args for something and copy this code
@@ -889,7 +909,7 @@ Location Map
         addRect(x - (width / 2), y - (height / 2), width, height, 'rgba(220,205,65,0.7)', 0, 0, "Rack 1");
     }
 
-    function remove_node(node_idex) {
+    function delete_floorplan_object(node_idex) {
         racks.splice(node_idex, 1);
         invalidate();
         disable_button_selection();
@@ -929,7 +949,7 @@ Location Map
 
     $(document).ready(function () {
         // Your code here
-        init_floor_plan();
+        init_floorplan();
     });
 
 
